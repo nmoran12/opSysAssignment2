@@ -133,7 +133,6 @@ page selectVictim(int page_number, enum repl replacmentMode)
             }
             break;
         }
-
         case REPL_LRU: {
             unsigned long best = (unsigned long)-1;
             for (int i = 0; i < numFrames; i++) {
@@ -144,7 +143,6 @@ page selectVictim(int page_number, enum repl replacmentMode)
             }
             break;
         }
-
         case REPL_CLOCK: {
             while (1) {
                 if (framesTbl[clockHandIdx].ref == 0) {
@@ -162,6 +160,9 @@ page selectVictim(int page_number, enum repl replacmentMode)
     }
 
     /* Package victim info for the caller’s accounting/prints */
+
+    
+
     page victim;
     victim.pageNo   = framesTbl[victimIdx].pageNo;
     victim.modified = framesTbl[victimIdx].modified;
@@ -195,18 +196,18 @@ int main(int argc, char *argv[])
 	FILE        *trace;
 
 
-        if (argc < 5) {
-             printf( "Usage: ./memsim inputfile numberframes replacementmode debugmode \n");
-             exit ( -1);
+    if (argc < 5) {
+        printf( "Usage: ./memsim inputfile numberframes replacementmode debugmode \n");
+        exit ( -1);
 	}
 	else {
         tracename = argv[1];	
-	trace = fopen( tracename, "r");
-	if (trace == NULL ) {
-             printf( "Cannot open trace file %s \n", tracename);
-             exit ( -1);
-	}
-	numFrames = atoi(argv[2]);
+	    trace = fopen( tracename, "r");
+        if (trace == NULL ) {
+            printf( "Cannot open trace file %s \n", tracename);
+            exit ( -1);
+        }
+	    numFrames = atoi(argv[2]);
         if (numFrames < 1) {
             printf( "Frame number must be at least 1\n");
             exit ( -1);
@@ -219,100 +220,94 @@ int main(int argc, char *argv[])
 			replace = REPL_CLOCK;
 		else if (strcmp(argv[3], "fifo\0") == 0)
 			replace = REPL_FIFO;
-		 
-        else 
-	  {
-             printf( "Replacement algorithm must be rand/fifo/lru/clock  \n");
-             exit ( -1);
-	  }
-
+        else {
+            printf( "Replacement algorithm must be rand/fifo/lru/clock  \n");
+            exit ( -1);
+        }
         if (strcmp(argv[4], "quiet\0") == 0)
             debugmode = 0;
-	else if (strcmp(argv[4], "debug\0") == 0)
+        else if (strcmp(argv[4], "debug\0") == 0)
             debugmode = 1;
-        else 
-	  {
-             printf( "Replacement algorithm must be quiet/debug  \n");
-             exit ( -1);
-	  }
+        else {
+            printf( "Replacement algorithm must be quiet/debug  \n");
+            exit ( -1);
+        }
 	}
 	
 	done = createMMU (numFrames);
 	if ( done == -1 ) {
-		 printf( "Cannot create MMU" ) ;
-		 exit(-1);
-        }
+        printf( "Cannot create MMU" ) ;
+        exit(-1);
+    }
 	no_events = 0 ;
 	disk_writes = 0 ;
 	disk_reads = 0 ;
 
-        do_line = fscanf(trace,"%x %c",&address,&rw);
 
+    do_line = fscanf(trace,"%x %c",&address,&rw);
 	if (do_line != 2) {
-    printf("total memory frames:  %d\n", numFrames);
-    printf("events in trace:      0\n");
-    printf("total disk reads:     0\n");
-    printf("total disk writes:    0\n");
-    printf("page fault rate:      0.0000\n");
-    fclose(trace); free(framesTbl); return 0;
-}
+        printf("total memory frames:  %d\n", numFrames);
+        printf("events in trace:      0\n");
+        printf("total disk reads:     0\n");
+        printf("total disk writes:    0\n");
+        printf("page fault rate:      0.0000\n");
+        fclose(trace); free(framesTbl); return 0;
+    }
 
-	while ( do_line == 2)
-	{
-		page_number =  address >> pageoffset;
-		frame_no = checkInMemory( page_number) ;    /* ask for physical address */
+    while ( do_line ==2) {
+        page_number = address >> pageoffset;
+        frame_no = checkInMemory( page_number) ;    /* ask for physical address */
 
-		if ( frame_no == -1 )
-		{
-		  disk_reads++ ;			/* Page fault, need to load it into memory */
-		  if (debugmode) 
-		      printf( "Page fault %8d \n", page_number) ;
-		  if (allocated < numFrames)  			/* allocate it to an empty frame */
-		   {
-                     frame_no = allocateFrame(page_number);
-		     allocated++;
-                   }
-                   else{
-		      Pvictim = selectVictim(page_number, replace) ;   /* returns page number of the victim  */
-		      frame_no = checkInMemory( page_number) ;    /* find out the frame the new page is in */
-		   if (Pvictim.modified)           /* need to know victim page and modified  */
-	 	      {
-                      disk_writes++;			    
-                      if (debugmode) printf( "Disk write %8d \n", Pvictim.pageNo) ;
-		      }
-		   else
-                      if (debugmode) printf( "Discard    %8d \n", Pvictim.pageNo) ;
-		   }
-		}
-		if ( rw == 'R'){
-		    if (debugmode) printf( "reading    %8d \n", page_number) ;
-		}
-		else if ( rw == 'W'){
-			/* mark resident page dirty */
-			if (frame_no >= 0 && frame_no < numFrames) {
-				framesTbl[frame_no].modified = 1;
-			}
-			if (debugmode) printf( "writting   %8d \n", page_number) ;
-		}
+        if ( frame_no == -1) {
+            disk_reads++ ;  /* Page fault, need to load it into memory */
 
-		 else {
-		      printf( "Badly formatted file. Error on line %d\n", no_events+1); 
-		      exit (-1);
-		}
+            if (debugmode) {
+                printf( "Page fault %8d \n", page_number) ;
+            }
+            if (allocated < numFrames) {    /* allocate it to an empty frame */
+                frame_no = allocateFrame(page_number);
+                allocated++;
+            }
+            else {
+                Pvictim = selectVictim(page_number, replace) ;   /* returns page number of the victim  */
+                frame_no = checkInMemory( page_number) ;    /* find out the frame the new page is in */
+                if (Pvictim.modified) {          /* need to know victim page and modified  */
+                    disk_writes++;
+                    if (debugmode) printf( "Disk write %8d \n", Pvictim.pageNo) ;
+                }
+                else {
+                    if (debugmode) printf( "Discard    %8d \n", Pvictim.pageNo) ;
+                }
+            }
+        }
 
-		no_events++;
-        	do_line = fscanf(trace,"%x %c",&address,&rw);
-	}
+        if ( rw == 'R') {
+            if (debugmode) printf( "reading    %8d \n", page_number) ;
+        }
+        else if ( rw == 'W') {
+            /* mark resident page dirty */
+            if (frame_no >= 0 && frame_no < numFrames) {
+                framesTbl[frame_no].modified = 1;
+            }
+            if (debugmode) printf( "writting   %8d \n", page_number) ;
+        }
+        else {
+            printf( "Badly formatted file. Error on line %d\n", no_events+1); 
+            exit (-1);
+        }
 
-	fclose(trace);
+        no_events++;
+        do_line = fscanf(trace,"%x %c",&address,&rw);
+    }
+
+    fclose(trace);
 	free(framesTbl);
-	return 0;
 
 
-	printf( "total memory frames:  %d\n", numFrames);
-	printf( "events in trace:      %d\n", no_events);
-	printf( "total disk reads:     %d\n", disk_reads);
-	printf( "total disk writes:    %d\n", disk_writes);
-	printf( "page fault rate:      %.4f\n", (float) disk_reads/no_events);
+    printf( "Total memory frames:  %d\n", numFrames);
+    printf( "Events in trace:      %d\n", no_events);
+    printf( "Total disk reads:     %d\n", disk_reads);
+    printf( "Total disk writes:    %d\n", disk_writes);
+    printf( "Page fault rate:      %.4f\n", (float) disk_reads/no_events);
+    return 0;
 }
-				
