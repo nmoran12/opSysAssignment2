@@ -8,13 +8,16 @@ typedef struct {
         int pageNo;
         int modified;
 } page;
+
 enum repl { REPL_RAND, REPL_FIFO, REPL_LRU, REPL_CLOCK };
-int createMMU( int);
-int checkInMemory( int ) ;
-int allocateFrame( int ) ;
-page selectVictim( int, enum repl) ;
-const int pageoffset = 12; /* Page size is fixed to 4 KB */
-int numFrames ;
+int createMMU( int );
+int checkInMemory( int );
+int allocateFrame( int );
+page selectVictim( int, enum repl replacementMode);
+const int pageoffset = 12; /* Page size is fixed to 4 KB (used to bitwise shift)*/
+int numFrames;
+
+
 
 /* Per-frame metadata used by policies */
 typedef struct {
@@ -25,18 +28,25 @@ typedef struct {
     unsigned long loadSeq; /* FIFO sequence */
 } Frame;
 
-static Frame *framesTbl = NULL;
+static Frame *framesTbl = NULL; /* array table of frames */
 static unsigned long tickCounter = 0; /* advances every access/install */
 static unsigned long loadCounter = 0; /* advances on installs only */
 static int clockHandIdx = 0; /* CLOCK pointer */
 
 
-/* Creates the page table structure to record memory allocation */
-int createMMU (int frames)
+
+
+/* Creates the page table structure to record memory allocation 
+ * 
+ * Args: numberOfFrames - number of frames in physical memory
+ *
+ * Returns: 0 on success, -1 on failure
+*/
+int createMMU (int numberOfFrames)
 {
-    framesTbl = (Frame*)calloc(frames, sizeof(Frame));
-    if (!framesTbl) return -1;
-    for (int i = 0; i < frames; i++) {
+    framesTbl = (Frame*)calloc(numberOfFrames, sizeof(Frame));
+    if (!framesTbl) return -1; 
+    for (int i = 0; i < numberOfFrames; i++) {
         framesTbl[i].pageNo = -1;  /* mark free */
         framesTbl[i].modified = 0;
         framesTbl[i].ref = 0;
@@ -44,12 +54,20 @@ int createMMU (int frames)
         framesTbl[i].loadSeq = 0;
     }
     /* Deterministic by default; allow override for experiments */
-	const char *seedEnv = getenv("MEMSIM_SEED");
+	const char *seedEnv = getenv("MEMSIM_SEED"); 
 	srand(seedEnv ? (unsigned)strtoul(seedEnv, NULL, 10) : 1u);
 	return 0;
 }
 
-/* Checks for residency: returns frame no or -1 if not found */
+
+
+
+/* Checks for residency: returns frame no or -1 if not found 
+ *
+ * Args: page_number - the page number to check
+ * 
+ * Returns: frame number if found, -1 if not found 
+*/
 int checkInMemory(int page_number)
 {
     for (int i = 0; i < numFrames; i++) {
@@ -62,7 +80,15 @@ int checkInMemory(int page_number)
     return -1;
 }
 
-/* allocate page to the next free frame and record where it put it */
+
+
+
+/* allocate page to the next free frame and record where it put it 
+ *
+ * Args: page_number - the page number to allocate
+ * 
+ * Returns: frame number if allocated, -1 if no free frame found
+*/
 int allocateFrame(int page_number)
 {
     for (int i = 0; i < numFrames; i++) {
@@ -78,12 +104,21 @@ int allocateFrame(int page_number)
     return -1; /* none free (shouldn't happen when caller checks) */
 }
 
-/* Selects a victim for eviction/discard according to the replacement algorithm */
-page selectVictim(int page_number, enum repl mode)
-{
-    int victimIdx = -1;
 
-    switch (mode) {
+
+
+
+/* Selects a victim according to the replacement algorithm 
+ *
+ * Args: page_number (new page to install), mode (replacement algorithm)
+ * 
+ * Returns: the victim page info (number and dirty bit) for caller's accounting
+ */
+page selectVictim(int page_number, enum repl replacmentMode)
+{
+    int victimIdx = -1; 
+
+    switch (replacmentMode) {
         case REPL_RAND:
             victimIdx = rand() % numFrames;
             break;
@@ -146,18 +181,18 @@ page selectVictim(int page_number, enum repl mode)
 int main(int argc, char *argv[])
 {
   
-	char *tracename;
-	int	page_number,frame_no, done ;
-	int	do_line;
-	int	no_events, disk_writes, disk_reads;
-	int debugmode;
- 	enum repl  replace;
-	int	allocated=0; 
-	int	victim_page;
-    unsigned address;
-    char rw;
-	page Pvictim;
-	FILE *trace;
+	char        *tracename;
+	int	        page_number,frame_no, done ;
+	int	        do_line;
+	int	        no_events, disk_writes, disk_reads;
+	int         debugmode;
+ 	enum repl   replace;
+	int	        allocated = 0; 
+	int	        victim_page;
+    unsigned    address;
+    char        rw;
+	page        Pvictim;
+	FILE        *trace;
 
 
         if (argc < 5) {
