@@ -10,9 +10,9 @@ $(TARGET): memsim.c
 
 
 # testing targets
-TRACE ?= traces/trace1
-FRAMES ?= 10
-DEBUG ?= debug
+TRACE ?= traces/bzip.trace
+FRAMES ?= 50
+DEBUG ?= quiet
 
 fifo: $(TARGET)
 	./$(TARGET) $(TRACE) $(FRAMES) fifo $(DEBUG)

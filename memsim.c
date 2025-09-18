@@ -176,8 +176,13 @@ page selectVictim(int page_number, enum repl replacmentMode)
 
     return victim;
 }
+char* trimTraceName(char *string) 
+{
+    int len = strlen(string);
+    string[len-6] = '\0';   
+    return string + 7;      
 
-
+}
 		
 int main(int argc, char *argv[])
 {
@@ -194,6 +199,7 @@ int main(int argc, char *argv[])
     char        rw;
 	page        Pvictim;
 	FILE        *trace;
+    FILE        *csv;
 
 
     if (argc < 5) {
@@ -309,5 +315,14 @@ int main(int argc, char *argv[])
     printf( "Total disk reads:     %d\n", disk_reads);
     printf( "Total disk writes:    %d\n", disk_writes);
     printf( "Page fault rate:      %.4f\n", (float) disk_reads/no_events);
+    
+  
+    char *formatedTraceName = trimTraceName(tracename);
+
+    csv=fopen("results.csv","a");
+
+    fprintf(csv,"%s,%s,%d,%d,%d,%d,%.4f\n",formatedTraceName, argv[3],numFrames, no_events, disk_reads, disk_writes, (float) disk_reads/no_events);
+    fclose(csv);
+    
     return 0;
 }
